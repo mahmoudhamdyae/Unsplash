@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Unsplash</string>
+    <string name="generic_error">Something wrong happened. Please check your connection then try again.</string>
+
+    <!-- Screen Titles -->
+    <string name="home_screen_title">Unsplash</string>
+    <string name="photo_screen_title">Unsplash</string>
+
+    <!-- Home Screen -->
+    <string name="close">Close</string>
+    <string name="error_button_text">Try Again</string>
+</resources>
