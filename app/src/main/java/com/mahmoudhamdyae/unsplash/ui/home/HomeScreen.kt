@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -65,33 +64,71 @@ import com.mahmoudhamdyae.unsplash.R
 import com.mahmoudhamdyae.unsplash.domain.model.Photo
 import com.mahmoudhamdyae.unsplash.ui.composable.ErrorMessage
 import com.mahmoudhamdyae.unsplash.ui.composable.Loading
+import com.mahmoudhamdyae.unsplash.ui.home.mvi.HomeIntent
+import com.mahmoudhamdyae.unsplash.ui.home.mvi.HomeViewState
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState = viewModel.uiState
+    var photos by rememberSaveable { mutableStateOf(listOf<Photo>()) }
+    var isLoading by rememberSaveable { mutableStateOf(false) }
+    var error: String? by rememberSaveable { mutableStateOf(null) }
 
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = uiState.isLoading)
+    LaunchedEffect(LocalContext.current) {
+        viewModel.intentChannel.send(HomeIntent.GetPhotos)
+
+        GlobalScope.launch {
+            viewModel.viewState.collect {
+                when (it) {
+                    HomeViewState.Loading -> {
+                        isLoading = true
+                        error = null
+                        photos = listOf()
+                    }
+                    is HomeViewState.Error -> {
+                        isLoading = false
+                        error = it.error
+                        photos = listOf()
+                    }
+                    is HomeViewState.Photos -> {
+                        isLoading = false
+                        error = null
+                        photos = it.photos
+                    }
+                }
+            }
+        }
+    }
+
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isLoading)
 
     SwipeRefresh(
         state = swipeRefreshState,
-        onRefresh = viewModel::getPhotos
+        onRefresh = { GlobalScope.launch {
+            viewModel.intentChannel.send(HomeIntent.GetPhotos)
+        } }
     ) {
-        if (uiState.error != null) {
+        if (error != null) {
             ErrorMessage(
                 error = R.string.generic_error,
-                action = viewModel::getPhotos,
+                action = {
+                    GlobalScope.launch { viewModel.intentChannel.send(HomeIntent.GetPhotos) }
+                         },
                 modifier = modifier
             )
-        } else if (uiState.isLoading) {
+        } else if (isLoading) {
             Loading(modifier = modifier)
         } else {
             HomeScreenContent(
-                photos = uiState.photos,
+                photos = photos,
                 modifier = modifier
             )
         }
