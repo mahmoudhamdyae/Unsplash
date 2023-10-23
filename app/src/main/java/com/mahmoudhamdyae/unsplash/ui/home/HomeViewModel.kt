@@ -21,7 +21,7 @@ class HomeViewModel @Inject constructor(
 
     val intentChannel = Channel<HomeIntent>(Channel.UNLIMITED)
 
-    private val _viewState = MutableStateFlow<HomeViewState>(HomeViewState.Loading)
+    private val _viewState = MutableStateFlow(HomeViewState())
     val viewState = _viewState.asStateFlow()
 
     init {
@@ -37,12 +37,22 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun reduceResult() {
+        _viewState.value = _viewState.value.copy(
+            isLoading = true,
+            error = null
+        )
         when (val response = getPhotosUseCase()) {
             is Result.Success -> {
-                _viewState.value = HomeViewState.Photos(response.data)
+                _viewState.value = _viewState.value.copy(
+                    photos = response.data,
+                    isLoading = false
+                )
             }
             is Result.Error -> {
-                _viewState.value = HomeViewState.Error(response.message)
+                _viewState.value = _viewState.value.copy(
+                    isLoading = false,
+                    error = response.message
+                )
             }
         }
     }
